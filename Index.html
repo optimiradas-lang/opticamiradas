@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rastreo de Pedidos - Óptica Miradas</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- HTML5-QRCode Scanner -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #0a0a0a; /* Negro muy oscuro */
+            color: #f3f4f6;
+        }
+        
+        .brand-orange {
+            color: #ff6b00;
+        }
+        .bg-brand-orange {
+            background-color: #ff6b00;
+        }
+        .border-brand-orange {
+            border-color: #ff6b00;
+        }
+        .text-brand-orange {
+            color: #ff6b00;
+        }
+        .hover-brand-orange:hover {
+            background-color: #e65100;
+        }
+
+        /* Animaciones */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Loading Spinner */
+        .loader {
+            border: 3px solid rgba(255, 107, 0, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #ff6b00;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(30, 30, 30, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* QR Scanner Customization */
+        #reader {
+            border: none !important;
+        }
+        #reader video {
+            border-radius: 0.5rem;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        // ------------------------------------------------------------------
+        // CONFIGURACIÓN DE CONEXIÓN LOCAL
+        // ------------------------------------------------------------------
+        // El sistema buscará este archivo en la MISMA carpeta donde esté el HTML
+        const API_URL = "gestion_datos_backup.json"; 
+        // ------------------------------------------------------------------
+
+        // --- DEFINICIONES DE ESTADO ---
+        const STATUS_DEFINITIONS = {
+            "Contratación": {
+                label: "Contratación",
+                description: "En este momento el pedido ya ha sido recepcionado por el punto de venta.",
+                icon: "file-text",
+                step: 1
+            },
+            "Enviado a Asignación": {
+                label: "Enviado a Asignación",
+                description: "El pedido ha sido procesado y enviado a negocios, comunicando requerimientos. No es posible la cancelación.",
+                icon: "send",
+                step: 2
+            },
+            // Manejo de variaciones en la escritura
+            "enviado a asignación": {
+                label: "Enviado a Asignación",
+                description: "El pedido ha sido procesado y enviado a negocios.",
+                icon: "send",
+                step: 2
+            },
+            "Enviado a Taller": {
+                label: "Enviado a Taller",
+                description: "Fue enviado al taller para su producción.",
+                icon: "hammer",
+                step: 3
+            },
+            "Recibido del Taller": {
+                label: "Recibido del Taller",
+                description: "El dispositivo se encuentra pendiente a la revisión de calidad.",
+                icon: "search-check",
+                step: 4
+            },
+            "Productos Terminados": {
+                label: "Productos Terminados",
+                description: "El dispositivo se encuentra listo para recoger en el Punto Venta.",
+                icon: "package-check",
+                step: 5
+            },
+            "Retrabajo": {
+                label: "Retrabajo",
+                description: "Durante el proceso ocurrió algún problema, no se preocupe, solo nos vamos a demorar un poco.",
+                icon: "alert-triangle",
+                step: 3, 
+                isError: true
+            },
+            "Cancelación": {
+                label: "Cancelación",
+                description: "Pedido cancelado.",
+                icon: "x-circle",
+                step: 0,
+                isError: true
+            }
+        };
+
+        const STATUS_STEPS = [
+            "Contratación",
+            "Enviado a Asignación",
+            "Enviado a Taller",
+            "Recibido del Taller",
+            "Productos Terminados"
+        ];
+
+        // --- COMPONENTE: LOGO ---
+        const Logo = () => (
+            <div className="flex flex-col items-center justify-center mb-8">
+                <div className="w-16 h-16 bg-brand-orange rounded-full flex items-center justify-center mb-2 shadow-lg shadow-orange-900/50">
+                    <i data-lucide="glasses" className="text-white w-10 h-10"></i>
+                </div>
+                <h1 className="text-2xl font-bold tracking-widest text-white">ÓPTICA <span className="brand-orange">MIRADAS</span></h1>
+                <p className="text-xs text-gray-400 tracking-widest uppercase mt-1">Visión & Estilo</p>
+            </div>
+        );
+
+        // --- COMPONENTE: LECTOR QR ---
+        const QRScanner = ({ onScan, onClose }) => {
+            useEffect(() => {
+                const scanner = new Html5QrcodeScanner(
+                    "reader", 
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    /* verbose= */ false
+                );
+                
+                scanner.render((decodedText) => {
+                    scanner.clear();
+                    onScan(decodedText);
+                }, (error) => {
+                    // console.warn(error);
+                });
+
+                return () => {
+                    try { scanner.clear(); } catch(e) {}
+                };
+            }, [onScan]);
+
+            return (
+                <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+                    <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md relative border border-gray-700">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+                            <i data-lucide="x" className="w-6 h-6"></i>
+                        </button>
+                        <h3 className="text-lg font-semibold text-center mb-4 text-white">Escanear Código QR</h3>
+                        <div id="reader" className="w-full overflow-hidden rounded-lg bg-black"></div>
+                        <p className="text-center text-sm text-gray-400 mt-4">Apunta tu cámara al código QR del pedido</p>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- COMPONENTE: LOGIN ---
+        const LoginView = ({ onLogin, onScanClick, isLoading, dbError }) => {
+            const [code, setCode] = useState("");
+            const [inputError, setInputError] = useState("");
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!code.trim()) {
+                    setInputError("Por favor ingrese un código.");
+                    return;
+                }
+                onLogin(code.trim());
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+                    {/* Fondo decorativo */}
+                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
+                        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-orange-600/20 rounded-full blur-[100px]"></div>
+                        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-orange-900/20 rounded-full blur-[100px]"></div>
+                    </div>
+
+                    <div className="w-full max-w-md glass-panel p-8 rounded-2xl shadow-2xl fade-in">
+                        <Logo />
+                        
+                        <h2 className="text-xl font-semibold text-center mb-6 text-gray-200">Seguimiento de Pedidos</h2>
+                        
+                        {/* Estado de conexión a la base de datos */}
+                        {isLoading && (
+                            <div className="flex items-center justify-center gap-2 mb-4 text-orange-400 text-sm">
+                                <div className="loader"></div>
+                                <span>Cargando base de datos local...</span>
+                            </div>
+                        )}
+
+                        {dbError && (
+                            <div className="mb-4 p-4 bg-red-900/40 border border-red-800 rounded-lg text-red-200 text-xs text-left">
+                                <p className="font-bold mb-1 flex items-center gap-2">
+                                    <i data-lucide="alert-circle" className="w-4 h-4"></i>
+                                    Error de Lectura
+                                </p>
+                                <p className="opacity-90">{dbError}</p>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1 ml-1">Código del Pedido</label>
+                                <input 
+                                    type="text" 
+                                    value={code}
+                                    onChange={(e) => {setCode(e.target.value); setInputError("");}}
+                                    placeholder="Ej: 2011YRAMT29SON"
+                                    disabled={isLoading || dbError}
+                                    className="w-full bg-gray-800/50 border border-gray-700 text-white px-4 py-3 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all placeholder-gray-600 disabled:opacity-50"
+                                />
+                            </div>
+                            
+                            {inputError && <p className="text-red-500 text-sm text-center bg-red-900/20 py-2 rounded-lg border border-red-900/50">{inputError}</p>}
+
+                            <button 
+                                type="submit" 
+                                disabled={isLoading || dbError}
+                                className="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-orange-900/40 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <i data-lucide="search" className="w-5 h-5"></i>
+                                Consultar Estado
+                            </button>
+                        </form>
+
+                        <div className="mt-6 flex items-center justify-between gap-4">
+                            <div className="h-px bg-gray-700 flex-1"></div>
+                            <span className="text-gray-500 text-sm">O escanear</span>
+                            <div className="h-px bg-gray-700 flex-1"></div>
+                        </div>
+
+                        <button 
+                            onClick={onScanClick}
+                            disabled={isLoading || dbError}
+                            className="mt-6 w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-3.5 rounded-xl transition-all border border-gray-700 flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            <i data-lucide="qr-code" className="w-5 h-5 brand-orange"></i>
+                            Escanear QR
+                        </button>
+                    </div>
+                    
+                    <footer className="mt-12 text-center text-gray-600 text-xs">
+                        &copy; 2025 Óptica Miradas. Todos los derechos reservados.
+                    </footer>
+                </div>
+            );
+        };
+
+        // --- COMPONENTE: VISTA DE RASTREO ---
+        const TrackingView = ({ order, onBack }) => {
+            const currentStatusKey = order._status || "Contratación";
+            const normalizedStatus = Object.keys(STATUS_DEFINITIONS).find(
+                key => key.toLowerCase() === currentStatusKey.toLowerCase()
+            ) || "Contratación";
+
+            const statusInfo = STATUS_DEFINITIONS[normalizedStatus];
+            const isRetrabajo = normalizedStatus === "Retrabajo";
+            const isCancelado = normalizedStatus === "Cancelación";
+
+            let currentStepIndex = STATUS_STEPS.indexOf(normalizedStatus);
+            if (currentStepIndex === -1) {
+                if (normalizedStatus === "Productos Terminados") currentStepIndex = 4;
+                else if (normalizedStatus.includes("Taller")) currentStepIndex = 2;
+                else currentStepIndex = 0;
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-950 p-4 md:p-8 flex flex-col items-center">
+                     <div className="w-full max-w-2xl fade-in">
+                        {/* Header Navegación */}
+                        <div className="flex items-center justify-between mb-8">
+                            <button onClick={onBack} className="text-gray-400 hover:text-white flex items-center gap-2 transition-colors">
+                                <i data-lucide="arrow-left" className="w-5 h-5"></i>
+                                <span>Volver</span>
+                            </button>
+                            <div className="flex items-center gap-2">
+                                <i data-lucide="glasses" className="text-orange-500 w-6 h-6"></i>
+                                <span className="font-bold tracking-widest text-sm md:text-base">MIRADAS TRACK</span>
+                            </div>
+                        </div>
+
+                        {/* Tarjeta de Información Principal */}
+                        <div className="glass-panel rounded-2xl p-6 md:p-8 mb-6 shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-4 opacity-10">
+                                <i data-lucide="file-check" className="w-32 h-32 text-orange-500"></i>
+                            </div>
+                            
+                            <div className="relative z-10">
+                                <div className="inline-block px-3 py-1 rounded-full bg-orange-900/30 border border-orange-500/30 text-orange-400 text-xs font-semibold mb-4">
+                                    PEDIDO #{order["Código"]}
+                                </div>
+                                <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{order["Nombre"]}</h1>
+                                <p className="text-gray-400 flex items-center gap-2 text-sm">
+                                    <i data-lucide="calendar" className="w-4 h-4"></i>
+                                    Fecha: {order["Fecha del Pedido"] || "N/A"}
+                                </p>
+                            </div>
+
+                            <div className="mt-8 grid grid-cols-2 gap-4 border-t border-gray-700/50 pt-6">
+                                <div>
+                                    <span className="block text-gray-500 text-xs uppercase tracking-wider">Armadura</span>
+                                    <span className="text-white font-medium">{order["Armadura"] || "N/A"}</span>
+                                </div>
+                                <div>
+                                    <span className="block text-gray-500 text-xs uppercase tracking-wider">Punto de Venta</span>
+                                    <span className="text-white font-medium">{order["Punto de Venta"] || "Óptica Miradas"}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Tarjeta de Estado Actual */}
+                        <div className={`rounded-2xl p-6 mb-8 border transition-all ${isCancelado ? 'bg-red-900/20 border-red-800' : (isRetrabajo ? 'bg-yellow-900/20 border-yellow-800' : 'bg-gray-900 border-gray-800')}`}>
+                            <div className="flex items-start gap-4">
+                                <div className={`p-3 rounded-xl ${isCancelado ? 'bg-red-500/20 text-red-500' : 'bg-brand-orange text-white shadow-lg shadow-orange-900/50'}`}>
+                                    <i data-lucide={statusInfo.icon || "info"} className="w-8 h-8"></i>
+                                </div>
+                                <div>
+                                    <h2 className={`text-xl font-bold mb-2 ${isCancelado ? 'text-red-400' : 'text-orange-400'}`}>
+                                        {statusInfo.label}
+                                    </h2>
+                                    <p className="text-gray-300 leading-relaxed">
+                                        {statusInfo.description}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Línea de Tiempo */}
+                        {!isCancelado && (
+                            <div className="glass-panel rounded-2xl p-6 md:p-8">
+                                <h3 className="text-gray-400 text-sm uppercase tracking-wider mb-6">Progreso del Pedido</h3>
+                                
+                                <div className="relative">
+                                    <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-800 md:hidden"></div>
+                                    <div className="absolute top-4 left-2 right-2 h-0.5 bg-gray-800 hidden md:block"></div>
+
+                                    <div className="flex flex-col md:flex-row justify-between gap-6 md:gap-0 relative z-10">
+                                        {STATUS_STEPS.map((stepLabel, index) => {
+                                            const isActive = index <= currentStepIndex;
+                                            const isCurrent = index === currentStepIndex;
+                                            const icons = ["file-text", "send", "hammer", "search-check", "package-check"];
+
+                                            return (
+                                                <div key={index} className="flex md:flex-col items-center gap-4 md:gap-2 md:w-1/5 group">
+                                                    <div className={`
+                                                        w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300
+                                                        ${isActive ? 'bg-orange-500 border-orange-500 text-white' : 'bg-gray-900 border-gray-700 text-gray-600'}
+                                                        ${isCurrent ? 'ring-4 ring-orange-500/20 scale-110' : ''}
+                                                    `}>
+                                                        <i data-lucide={icons[index]} className="w-4 h-4"></i>
+                                                    </div>
+                                                    <div className="md:text-center">
+                                                        <p className={`text-sm font-semibold ${isActive ? 'text-white' : 'text-gray-600'}`}>{stepLabel}</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                     </div>
+                </div>
+            );
+        };
+
+        // --- COMPONENTE PRINCIPAL (APP) ---
+        const App = () => {
+            const [currentView, setCurrentView] = useState('login');
+            const [selectedOrder, setSelectedOrder] = useState(null);
+            const [ordersData, setOrdersData] = useState([]);
+            const [isLoading, setIsLoading] = useState(false);
+            const [dbError, setDbError] = useState("");
+
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            });
+
+            // FETCH DATA AL INICIO
+            useEffect(() => {
+                const fetchData = async () => {
+                    setIsLoading(true);
+                    setDbError("");
+                    
+                    try {
+                        const response = await fetch(API_URL);
+                        
+                        if (!response.ok) {
+                            if (response.status === 404) throw new Error("No se encuentra el archivo 'gestion_datos_backup.json'. Asegúrese de que está en la misma carpeta.");
+                            throw new Error(`Error de carga: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        let finalData = [];
+                        if (data.allLoadedData) finalData = data.allLoadedData;
+                        else if (Array.isArray(data)) finalData = data;
+                        else finalData = [data];
+
+                        setOrdersData(finalData);
+                    } catch (error) {
+                        console.error("Error fetching data:", error);
+                        
+                        // Mensaje de error amigable y específico
+                        let errorMsg = "No se pudo cargar la base de datos.";
+                        
+                        // Detección de error por abrir el archivo localmente (doble click)
+                        if (window.location.protocol === 'file:') {
+                            errorMsg = (
+                                <span>
+                                    Los navegadores bloquean la lectura de archivos locales por seguridad (Error CORS).
+                                    <br/><br/>
+                                    <strong>Solución:</strong> Para que funcione, debes subir esta carpeta a un hosting (como Netlify) o usar un servidor local. No funcionará haciendo doble click en el archivo.
+                                </span>
+                            );
+                        } else if (error.message.includes("No se encuentra")) {
+                            errorMsg = error.message;
+                        } else {
+                            errorMsg = "Error de conexión. Verifique que el archivo JSON está en la carpeta correcta.";
+                        }
+
+                        setDbError(errorMsg);
+                    } finally {
+                        setIsLoading(false);
+                    }
+                };
+
+                fetchData();
+            }, []);
+
+            const handleLogin = (code) => {
+                const normalizedCode = code.trim().toUpperCase(); 
+                
+                // Búsqueda insensible a mayúsculas/minúsculas y espacios
+                const foundOrder = ordersData.find(o => 
+                    String(o["Código"]).trim().toUpperCase() === normalizedCode
+                );
+                
+                if (foundOrder) {
+                    setSelectedOrder(foundOrder);
+                    setCurrentView('tracking');
+                } else {
+                    alert("Código no encontrado. Por favor verifique e intente nuevamente.");
+                }
+            };
+
+            const handleScan = (decodedText) => {
+                setCurrentView('login');
+                handleLogin(decodedText);
+            };
+
+            return (
+                <div className="antialiased text-gray-100">
+                    {currentView === 'login' && (
+                        <LoginView 
+                            onLogin={handleLogin} 
+                            onScanClick={() => setCurrentView('scanner')}
+                            isLoading={isLoading}
+                            dbError={dbError}
+                        />
+                    )}
+
+                    {currentView === 'scanner' && (
+                        <QRScanner 
+                            onScan={handleScan} 
+                            onClose={() => setCurrentView('login')}
+                        />
+                    )}
+
+                    {currentView === 'tracking' && selectedOrder && (
+                        <TrackingView 
+                            order={selectedOrder} 
+                            onBack={() => {
+                                setSelectedOrder(null);
+                                setCurrentView('login');
+                            }}
+                        />
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
