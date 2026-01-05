@@ -98,9 +98,18 @@
       "Mixto Cod. Pago en Línea": "",
       "Notas": "",
       "Punto de Venta": "Óptica Miradas",
-      "Armadura": "SONIT",
+      "Armadura": "SONIT 006",
       "Código Contable Armadura": "",
-      "_changeHistory": [],
+      "_changeHistory": [
+        {
+          "field": "Armadura",
+          "oldValue": "SONIT",
+          "newValue": "SONIT 006",
+          "date": "2026-01-05",
+          "time": "1:48:37",
+          "changedBy": "admin"
+        }
+      ],
       "_originalIndex": 1,
       "_status": "Enviado a Asignación",
       "_statusHistory": [
@@ -155,12 +164,19 @@
       "Código Contable Armadura": "",
       "_changeHistory": [],
       "_originalIndex": 2,
-      "_status": "Enviado a Asignación",
+      "_status": "Recibido del Taller",
       "_statusHistory": [
         {
           "status": "Enviado a Asignación",
           "date": "2025-11-25",
           "time": "11:15:04",
+          "changedBy": "admin",
+          "tecnicosTurno": ""
+        },
+        {
+          "status": "Recibido del Taller",
+          "date": "2026-01-05",
+          "time": "1:48:53",
           "changedBy": "admin",
           "tecnicosTurno": ""
         }
@@ -208,12 +224,19 @@
       "Código Contable Armadura": "",
       "_changeHistory": [],
       "_originalIndex": 3,
-      "_status": "Enviado a Asignación",
+      "_status": "Retrabajo",
       "_statusHistory": [
         {
           "status": "Enviado a Asignación",
           "date": "2025-11-25",
           "time": "11:15:04",
+          "changedBy": "admin",
+          "tecnicosTurno": ""
+        },
+        {
+          "status": "Retrabajo",
+          "date": "2026-01-05",
+          "time": "1:49:12",
           "changedBy": "admin",
           "tecnicosTurno": ""
         }
@@ -261,12 +284,19 @@
       "Código Contable Armadura": "",
       "_changeHistory": [],
       "_originalIndex": 4,
-      "_status": "Enviado a Asignación",
+      "_status": "Entregados",
       "_statusHistory": [
         {
           "status": "Enviado a Asignación",
           "date": "2025-11-25",
           "time": "11:15:04",
+          "changedBy": "admin",
+          "tecnicosTurno": ""
+        },
+        {
+          "status": "Entregados",
+          "date": "2026-01-05",
+          "time": "1:49:27",
           "changedBy": "admin",
           "tecnicosTurno": ""
         }
@@ -3976,7 +4006,16 @@
       "_statusHistory": []
     }
   ],
-  "notes": {},
+  "notes": {
+    "3": [
+      {
+        "text": "jjjjjj",
+        "date": "2026-01-05",
+        "time": "1:49:12",
+        "by": "admin"
+      }
+    ]
+  },
   "users": [
     {
       "username": "admin",
