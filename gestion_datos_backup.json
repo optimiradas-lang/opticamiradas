@@ -42,7 +42,7 @@
       "Código Contable Armadura": "",
       "_changeHistory": [],
       "_originalIndex": 0,
-      "_status": "Enviado a Asignación",
+      "_status": "Productos Terminados",
       "_statusHistory": [
         {
           "status": "Enviado a Asignación",
@@ -50,6 +50,13 @@
           "time": "11:15:04",
           "changedBy": "admin",
           "tecnicosTurno": ""
+        },
+        {
+          "status": "Productos Terminados",
+          "date": "2026-01-05",
+          "time": "1:39:44",
+          "changedBy": "admin",
+          "tecnicosTurno": "uli"
         }
       ]
     },
