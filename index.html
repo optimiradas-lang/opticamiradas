@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vista Azul | Menú</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary-blue: #0077b6; --dark-blue: #03045e; --white: #ffffff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; scroll-behavior: smooth; }
+        body { font-family: 'Poppins', sans-serif; background-color: #f0f5f9; color: #333; padding-top: 120px; }
+        nav { position: fixed; top: 0; width: 100%; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); z-index: 1000; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .nav-logo { font-family: 'Playfair Display', serif; color: var(--dark-blue); font-size: 1.5rem; text-decoration: none; font-weight: 700; }
+        .btn-lang { border: 2px solid var(--primary-blue); background: transparent; color: var(--primary-blue); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.75rem; font-weight: 600; }
+        .btn-lang.active { background: var(--primary-blue); color: white; }
+        header { background: linear-gradient(rgba(0,119,182,0.7), rgba(3,4,94,0.85)), url('https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=1200&q=80'); background-size: cover; height: 40vh; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; border-bottom-left-radius: 40px; border-bottom-right-radius: 40px; }
+        header h1 { font-family: 'Playfair Display', serif; font-size: 3rem; }
+        .categories-container { position: sticky; top: 65px; z-index: 999; background: #f0f5f9; padding: 15px 0; }
+        .categories-bar { display: flex; overflow-x: auto; gap: 12px; padding: 0 20px; scrollbar-width: none; }
+        .cat-btn { background: var(--white); color: var(--dark-blue); padding: 10px 22px; border-radius: 30px; text-decoration: none; font-size: 0.85rem; font-weight: 500; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .container { max-width: 800px; margin: 20px auto; padding: 0 20px; }
+        .section-title { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--dark-blue); margin: 40px 0 20px; }
+        .menu-card { background: var(--white); border-radius: 25px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); margin-bottom: 30px; }
+        .item { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #f1f1f1; }
+        .item-name { font-weight: 600; display: block; }
+        .item-desc { font-size: 0.85rem; color: #777; }
+        .item-price { font-weight: 700; color: var(--primary-blue); }
+        footer { background: var(--dark-blue); color: white; text-align: center; padding: 40px; margin-top: 60px; border-top-left-radius: 40px; border-top-right-radius: 40px; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#" class="nav-logo">Vista Azul</a>
+        <div>
+            <button class="btn-lang" id="es-btn" onclick="setLang('es')">ES</button>
+            <button class="btn-lang" id="en-btn" onclick="setLang('en')">EN</button>
+        </div>
+    </nav>
+    <header><h1>Vista Azul</h1><p>Snack Bar | Matanzas</p></header>
+    <div class="categories-container"><div class="categories-bar" id="cat-nav"></div></div>
+    <div class="container" id="menu-box"></div>
+    <footer><p>© 2024 Vista Azul Snack Bar</p></footer>
+    <script>
+        const data = [{"category":{"es":"Comidas","en":"Food"},"id":"cat_1767470324995","items":[{"name":{"es":"Sándwich Cubano","en":"Cuban Sandwich"},"desc":{"es":"Jamón y queso","en":"Ham and cheese"},"price":"$5.00"}]},{"category":{"es":"Bebidas","en":"Drink"},"id":"cat_1767470339382","items":[{"name":{"es":"Cerveza","en":"Beer"},"desc":{"es":"","en":""},"price":"450"}]}];
+        let cur = 'es';
+        function setLang(l) {
+            cur = l;
+            document.getElementById('es-btn').classList.toggle('active', l==='es');
+            document.getElementById('en-btn').classList.toggle('active', l==='en');
+            render();
+        }
+        function render() {
+            const box = document.getElementById('menu-box');
+            const nav = document.getElementById('cat-nav');
+            box.innerHTML = ''; nav.innerHTML = '';
+            data.forEach(s => {
+                nav.innerHTML += '<a href="#'+s.id+'" class="cat-btn">'+s.category[cur]+'</a>';
+                box.innerHTML += '<section id="'+s.id+'"><h2 class="section-title">'+s.category[cur]+'</h2><div class="menu-card">' + 
+                    s.items.map(i => '<div class="item"><div><span class="item-name">'+i.name[cur]+'</span><span class="item-desc">'+i.desc[cur]+'</span></div><span class="item-price">'+i.price+'</span></div>').join('') +
+                    '</div></section>';
+            });
+        }
+        setLang('es');
+    </script>
+</body>
+</html>
